@@ -29,6 +29,8 @@
 	UITextField                *_messageTextField;
 	BOOL                       _isFromNewSMS;
 	NSDate                     *_lastTime;
+    
+    CFSocketRef _socket;
 }
 @property (weak, nonatomic) IBOutlet UITextField *urlTextField;
 @property (weak, nonatomic) IBOutlet UITableView *bgTableView;
@@ -41,16 +43,14 @@
 @property (nonatomic, retain) NSString               *titleString;
 @property (nonatomic, retain) NSMutableString        *messageString;
 @property (nonatomic, retain) NSMutableArray		 *chatArray;
-
 @property (nonatomic, retain) NSDate                 *lastTime;
 
 
+- (IBAction)TouchConnectServer:(id)sender;
 
 - (IBAction)sendMessage:(id)sender;
 - (IBAction)closeKeyboard:(id)sender;
-- (IBAction)setUrl:(id)sender;
 - (IBAction)addFaceBoard:(id)sender;
-- (IBAction)textContentTouch:(id)sender;
 - (IBAction)urlTextTouch:(id)sender;
 
 @end

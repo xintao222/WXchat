@@ -8,6 +8,10 @@
 
 #import "MainView.h"
 #import "Message.h"
+#import <sys/socket.h>
+#import <netinet/in.h>
+#import <arpa/inet.h>
+#import <unistd.h>
 
 #define BEGIN_FLAG @"["
 #define END_FLAG @"]"
@@ -15,6 +19,7 @@
 #define KFacialSizeHeight 18
 #define MAX_WIDTH 150
 
+MainView *mainview;
 @interface MainView ()
 
 @end
@@ -131,8 +136,128 @@
     NSLog(@"SEND VIEW %f",sendView.frame.origin.y);
 }
 
+
+
+
+
+
+
+#pragma mark ----sokect-----------------
+
+- (IBAction)TouchConnectServer:(id)sender {
+    NSString *serverIp = self.urlTextField.text;
+    serverIp=@"127.0.0.1";
+    [self CreateConnect:serverIp];
+
+}
+
+-(void)CreateConnect:(NSString*)strAddress
+{
+    CFSocketContext sockContext = {0, // 结构体的版本，必须为0
+        (__bridge void *) self,
+        NULL, // 一个定义在上面指针中的retain的回调， 可以为NULL
+        NULL,
+        NULL};
+    _socket = CFSocketCreate(kCFAllocatorDefault, // 为新对象分配内存，可以为nil
+                             PF_INET, // 协议族，如果为0或者负数，则默认为PF_INET
+                             SOCK_STREAM, // 套接字类型，如果协议族为PF_INET,则它会默认为SOCK_STREAM
+                             IPPROTO_TCP, // 套接字协议，如果协议族是PF_INET且协议是0或者负数，它会默认为IPPROTO_TCP
+                             kCFSocketConnectCallBack, // 触发回调函数的socket消息类型，具体见Callback Types
+                             TCPClientConnectCallBack, // 上面情况下触发的回调函数
+                             &sockContext // 一个持有CFSocket结构信息的对象，可以为nil
+                             );
+    if(_socket != NULL)
+    {
+        struct sockaddr_in addr4;   // IPV4
+        memset(&addr4, 0, sizeof(addr4));
+        addr4.sin_len = sizeof(addr4);
+        addr4.sin_family = AF_INET;
+        addr4.sin_port = htons(8888);
+        addr4.sin_addr.s_addr = inet_addr([strAddress UTF8String]);  // 把字符串的地址转换为机器可识别的网络地址
+        
+        // 把sockaddr_in结构体中的地址转换为Data
+        CFDataRef address = CFDataCreate(kCFAllocatorDefault, (UInt8 *)&addr4, sizeof(addr4));
+        CFSocketConnectToAddress(_socket, // 连接的socket
+                                 address, // CFDataRef类型的包含上面socket的远程地址的对象
+                                 -1  // 连接超时时间，如果为负，则不尝试连接，而是把连接放在后台进行，如果_socket消息类型为kCFSocketConnectCallBack，将会在连接成功或失败的时候在后台触发回调函数
+                                 );
+        CFRunLoopRef cRunRef = CFRunLoopGetCurrent();    // 获取当前线程的循环
+        // 创建一个循环，但并没有真正加如到循环中，需要调用CFRunLoopAddSource
+        CFRunLoopSourceRef sourceRef = CFSocketCreateRunLoopSource(kCFAllocatorDefault, _socket, 0);
+        CFRunLoopAddSource(cRunRef, // 运行循环
+                           sourceRef,  // 增加的运行循环源, 它会被retain一次
+                           kCFRunLoopCommonModes  // 增加的运行循环源的模式
+                           );
+        CFRelease(sourceRef);
+        NSLog(@"connect ok");
+    }
+}
+
+
+// socket回调函数，同客户端
+static void TCPClientConnectCallBack(CFSocketRef socket, CFSocketCallBackType type, CFDataRef address, const void *data,void *info)
+{
+    MainView *client = (__bridge MainView *)info;
+    NSString *nowTime=[client DateStringFromDate:[NSDate date]];
+    if (data != NULL)
+    {
+        NSLog(@"socket,服务端连接失败");
+        [client addMessage:@"连接失败！" isSelf:YES type:@"text" time:nowTime];
+        [client setIsConnect:NO];
+    }
+    else
+    {
+        NSLog(@"socket,服务端连接成功");
+        [client addMessage:@"连接成功！" isSelf:YES type:@"text" time:nowTime];
+        [client setIsConnect:YES];
+    }
+    [client.bgTableView reloadData];
+    [client StartReadThread];
+    mainview=client;
+}
+- (void) setIsConnect:(BOOL) bo{
+    isConnect=bo;
+}
+-(void)StartReadThread
+{
+    NSThread *InitThread = [[NSThread alloc]initWithTarget:self selector:@selector(InitThreadFunc:) object:self];
+    [InitThread start];
+}
+-(void)InitThreadFunc:(id)sender
+{
+    while (1) {
+        [self readStream];
+    }
+}
+// 读取接收的数据
+-(void)readStream
+{
+    char buffer[1024];
+    NSString *str = @"服务器发来数据：";
+    recv(CFSocketGetNative(_socket), buffer, sizeof(buffer), 0);
+    {
+        str = [str stringByAppendingString:[NSString stringWithUTF8String:buffer]];
+    }
+    NSLog(str);
+    //回界面显示信息
+    [self performSelectorOnMainThread:@selector(ShowMsg:) withObject:str waitUntilDone:NO];
+}
+-(void)ShowMsg:(id)sender
+{
+    NSLog(@"ShowMsg");
+    NSString *str = sender;
+    NSString *time=[self getNodeValue:@"CreateTime" xmlStr:str];
+    [self addMessage:[NSString stringWithFormat:@"服务器：%@",[self getNodeValue:@"Content" xmlStr:str]] isSelf:NO type:@"text" time:[self DateStringFromString:time]];
+    [self.bgTableView reloadData];
+}
+
+
+
+
 #pragma mark ----发送消息---------------
 //确定发送消息按钮
+
+
 - (IBAction)sendMessage:(id)sender {
     allCellHeight=0;
     [self sendTextMessage];
@@ -178,47 +303,7 @@
 {
     [self sendTextMessage];
 }
-- (IBAction)setUrl:(id)sender
-{
-    NSDate *nowTime = [NSDate date];
-    if ([self.chatArray lastObject] == nil) {
-		self.lastTime = nowTime;
-		[self.chatArray addObject:nowTime];
-	}
-	// 发送后生成泡泡显示出来
-	NSTimeInterval timeInterval = [nowTime timeIntervalSinceDate:self.lastTime];
-	if (timeInterval >60) {
-		self.lastTime = nowTime;
-		[self.chatArray addObject:nowTime];
-	}
-    
-    
-    NSString * urlString = urlTextField.text;
-    if (![urlString hasPrefix:@"http"]) {
-        urlString = [NSString stringWithFormat:@"%@%@", @"http://", urlString];
-        urlTextField.text=urlString;
-    }
-    NSURL * url = [NSURL URLWithString:urlString];
-    NSURLRequest *request = [[NSURLRequest alloc]initWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:10];
-    //[request setHTTPMethod:@"GET"];
-    NSURLConnection * connect = [[NSURLConnection alloc] initWithRequest:request delegate:self];
-    [connect start];
-}
 
-
-- (IBAction)setURL:(UITextField *)urlText
-{
-    NSString * urlString = urlText.text;
-    if (![urlString hasPrefix:@"http"]) {
-        urlString = [NSString stringWithFormat:@"%@%@", @"http://", urlString];
-        urlText.text=urlString;
-    }
-    NSURL * url = [NSURL URLWithString:urlString];
-    NSURLRequest *request = [[NSURLRequest alloc]initWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:10];
-    NSURLConnection * connect = [[NSURLConnection alloc] initWithRequest:request delegate:self];
-    [connect start];
-    
-}
 //获取url参数
 - (NSString*)dictionaryFromQuery:(NSString*)query usingEncoding:(NSStringEncoding)encoding name:(NSString*)Name
 {
@@ -244,44 +329,6 @@
     }
     return @"无此参数";
 }
-
-
-#pragma mark -------------NSURLConnectionDelegate--------------------
-
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
-{
-    
-    NSURL * url = [NSURL URLWithString:self.urlTextField.text];
-    NSString *echostr=[self dictionaryFromQuery:[url query] usingEncoding:NSUTF8StringEncoding name:@"echostr"];
-    
-    NSString *result = [[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding];
-    NSString *nowTime=[self DateStringFromDate:[NSDate date]];
-    if([result isEqual:echostr])
-    {
-        isConnect=YES;
-        [self addMessage:@"连接成功！" isSelf:YES type:@"text" time:nowTime];
-    }
-    else
-    {
-        isConnect=YES;
-        [self addMessage:@"连接失败！" isSelf:YES type:@"text" time:nowTime];
-    }
-    [bgTableView reloadData];
-}
-//获取weixin的post请求的url
--(NSString*)getUrl:(NSString *) urlStr
-{
-    NSRange range;
-    range=[urlStr rangeOfString:@"?"];
-    if (range.location != NSNotFound)
-    {
-        urlStr = [urlStr substringToIndex:range.location];
-        return  urlStr;
-    }
-    else
-        return @"";
-}
-
 
 
 #pragma mark ------NSTableViewDataSource--------
@@ -373,27 +420,13 @@
     NSString *textContent=[NSString stringWithFormat:@"<xml><ToUserName>1</ToUserName><FromUserName>2</FromUserName><CreateTime>1348831860</CreateTime><MsgType>text</MsgType><Content>%@</Content><MsgId>1234567890123456</MsgId></xml>",source];
     
     
-    //获取请求地址？？
-    NSURL *url = [NSURL URLWithString:[self getUrl:self.urlTextField.text]];
-    //发送post请求
-    NSMutableURLRequest *request = [[NSMutableURLRequest alloc]initWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:10];
-    [request setHTTPMethod:@"POST"];//设置请求方式为POST，默认为GET
-    
     NSData *data = [textContent dataUsingEncoding:NSUTF8StringEncoding];
-    [request setHTTPBody:data];
-    NSData *received = [NSURLConnection sendSynchronousRequest:request returningResponse:nil error:nil];
-    self.textContent.text=@"";
-    //获取服务器返回的xml字符串
-    NSString *xmlStr = [[NSString alloc]initWithData:received encoding:NSUTF8StringEncoding];
-    [self receiveText:xmlStr];
+    char *ch=[data bytes];
+    send(CFSocketGetNative(_socket), ch, strlen(ch) + 1, 0);
 }
-////接受文本消息
--(void)receiveText:(NSString *)text
-{
-    NSString *time=[self getNodeValue:@"CreateTime" xmlStr:text];
-    
-    [self addMessage:[NSString stringWithFormat:@"服务器：%@",[self getNodeValue:@"Content" xmlStr:text]] isSelf:NO type:@"text" time:[self DateStringFromString:time]];
-}
+
+
+
 -(NSString*)getNodeValue:(NSString*)nodeName xmlStr:(NSString*)xmlStr
 {
     NSRange range;

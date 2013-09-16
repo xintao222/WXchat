@@ -205,6 +205,8 @@
 		98B2151D17E036D900809B90 /* MainView.xib in Resources */ = {isa = PBXBuildFile; fileRef = 98B2151B17E036D900809B90 /* MainView.xib */; };
 		98B2152017E03E8200809B90 /* Message.m in Sources */ = {isa = PBXBuildFile; fileRef = 98B2151F17E03E8100809B90 /* Message.m */; };
 		98B2152217E05EA500809B90 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 98B2152117E05EA500809B90 /* QuartzCore.framework */; };
+		98FF4B2117E6F40800D690A3 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 98FF4B2017E6F40800D690A3 /* CFNetwork.framework */; };
+		98FF4B2317E6F40F00D690A3 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 98FF4B2217E6F40F00D690A3 /* SystemConfiguration.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -415,6 +417,8 @@
 		98B2151E17E03E8100809B90 /* Message.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Message.h; path = Classes/Message.h; sourceTree = "<group>"; };
 		98B2151F17E03E8100809B90 /* Message.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = Message.m; path = Classes/Message.m; sourceTree = "<group>"; };
 		98B2152117E05EA500809B90 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		98FF4B2017E6F40800D690A3 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
+		98FF4B2217E6F40F00D690A3 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -422,6 +426,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98FF4B2317E6F40F00D690A3 /* SystemConfiguration.framework in Frameworks */,
+				98FF4B2117E6F40800D690A3 /* CFNetwork.framework in Frameworks */,
 				98B2150117E0352400809B90 /* CoreGraphics.framework in Frameworks */,
 				98B2152217E05EA500809B90 /* QuartzCore.framework in Frameworks */,
 				98B214FD17E0352400809B90 /* UIKit.framework in Frameworks */,
@@ -645,6 +651,8 @@
 		98B214F017E0352400809B90 = {
 			isa = PBXGroup;
 			children = (
+				98FF4B2217E6F40F00D690A3 /* SystemConfiguration.framework */,
+				98FF4B2017E6F40800D690A3 /* CFNetwork.framework */,
 				98B2150217E0352400809B90 /* WXiphone */,
 				98B214FB17E0352400809B90 /* Frameworks */,
 				98B214FA17E0352400809B90 /* Products */,
